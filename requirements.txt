@@ -1,0 +1,7 @@
+td-ameritrade-python-api
+PySimpleGUI
+pandas
+numpy
+colorama
+discord.py-self
+pyetrade
