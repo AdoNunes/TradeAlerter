@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from configurator import cfg
+from tradealerter.configurator import cfg
 
 class BaseBroker(ABC):
     order_filled = 'FILLED'

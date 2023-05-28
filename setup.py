@@ -24,7 +24,7 @@ setup(
     license='BSD (3-clause)',
     long_description='When an order is filled, generate a trade alert for a Discord channel.',
     url='',
-    download_url='https://github.com/AdoNunes/TradeAlerter',
+    download_url='https://github.com/AdoNunes/RealtimeTradeAlerter',
     packages=find_packages(),
     install_requires=requirements,
     classifiers=[

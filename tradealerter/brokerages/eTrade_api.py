@@ -8,7 +8,7 @@ import json
 import os
 
 from tradealerter.configurator import cfg
-from . import BaseBroker
+from tradealerter.brokerages import BaseBroker
 
 
 class eTrade(BaseBroker):
@@ -18,11 +18,12 @@ class eTrade(BaseBroker):
         self.account_n = account_n
         self.consumer_key = cfg["etrade"]["CONSUMER_KEY"]
         self.consumer_secret = cfg["etrade"]["CONSUMER_SECRET"]
+        self.token_fname = os.path.join(cfg['root']['dir'], "tokens.json")
         self.portfolio = []
         self.orders = []
-        
+
     def get_session(self):
-        """get token and sessions, will try several times and sleep for a second between each try"""
+        """Get token and sessions, will try several times and sleep for a second between each try"""
         for ix in range(5):
             try:
                 return self._get_session()
@@ -58,17 +59,17 @@ class eTrade(BaseBroker):
             self.order_session = pyetrade.ETradeOrder(**kwargs)
             self._get_account()
             return True
-        
+
         # if tokens saved try getting session
-        if os.path.exists("tokens.json"):
-            with open("tokens.json", "r") as f:
+        if os.path.exists(self.token_fname):
+            with open(self.token_fname, "r") as f:
                 self.tokens = json.load(f)   
             try:
                 return sessions()  
             except:
                 print("Loaded tokens expired, requesting new tokens")
-                os.remove("tokens.json")  
-        
+                os.remove(self.token_fname)  
+
         # if tokens not valid, get new ones
         oauth = pyetrade.ETradeOAuth(self.consumer_key, self.consumer_secret)
         if cfg['etrade'].getboolean('WITH_BROWSER'):
@@ -78,7 +79,7 @@ class eTrade(BaseBroker):
             print(oauth.get_request_token())
         verifier_code = input("Please accept agreement and enter verification code from browser: ")
         self.tokens = self._get_access_token(oauth, verifier_code)
-        with open("tokens.json", "w") as f:
+        with open(self.token_fname, "w") as f:
             json.dump(self.tokens, f)
         return sessions() 
 
@@ -96,7 +97,6 @@ class eTrade(BaseBroker):
             self.accountIdKey = self.accounts_list[self.account_n]['accountIdKey']
             self.accountId = self.accounts_list[self.account_n]['accountId']
         self.account = self.accounts_list[self.account_n]
-
 
     def renew_access_token(self):
         print("Renewing access token...")
@@ -191,7 +191,7 @@ class eTrade(BaseBroker):
 
 
 
-if 0:
+if __name__ == "__main__":
     rt = eTrade()
     rt.get_session()
     print(rt.get_orders('FILLED'))

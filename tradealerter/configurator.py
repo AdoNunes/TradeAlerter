@@ -1,7 +1,6 @@
 import configparser
 import os
 import os.path as op
-import json
 
 package_dir = os.path.abspath(os.path.dirname(__file__))
 
@@ -15,4 +14,4 @@ if not os.path.exists(config_path):
 # load configuration file
 cfg = configparser.ConfigParser()
 cfg.read(config_path, encoding='utf-8')
-
+cfg['root']= {'dir': package_dir}

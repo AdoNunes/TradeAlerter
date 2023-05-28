@@ -3,24 +3,25 @@ import time
 import json
 import re
 import queue
-from brokerages.eTrade_api import eTrade
-from configurator import cfg
+from tradealerter.brokerages.eTrade_api import eTrade
+from tradealerter.configurator import cfg
 
 class orders_check():
     def __init__(self, queue=queue.Queue(maxsize=10)):
-        if op.exists("orders.json"):    
-            with open("orders.json", 'r') as f:
+        self.order_fname = op.join(cfg['root']['dir'], "orders.json")
+        if op.exists(self.order_fname):    
+            with open(self.order_fname, 'r') as f:
                 self.orders = json.load(f)
         else:
             self.orders = []
         self.bksession =  eTrade()
         self.bksession.get_session()
         self.queue = queue
-    
+
     def check_orders(self, refresh_rate=1):
         "Pool filled orders, generate alert and push it with date to queue"
         while True:
-            et_orders = self.bksession.get_orders()
+            et_orders = self.bksession.get_orders('FILLED')
             for eto in et_orders[-1::-1]:                
                 if not len(self.orders) or eto['order_id'] not in [o['order_id'] for o in self.orders]:
                     print(eto)
@@ -30,7 +31,7 @@ class orders_check():
                     print('found order')
             # save pushed orders
             if len(self.orders):
-                with open('orders.json', 'w') as f:
+                with open(self.order_fname, 'w') as f:
                     json.dump(self.orders, f)
             time.sleep(refresh_rate)
     

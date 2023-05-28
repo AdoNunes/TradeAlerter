@@ -40,6 +40,5 @@
 6. Edit the `tradealerter/config.ini` file to add your brokerage keys:
    - Add your eTrade api keys, see next section for instructions
    - (Optional) Modify string_add_to_alert to add a text at the end of the alert
-   - (Optional) If you have a TDA API, add it to the configuration.
 
 **Setup eTrade API**
