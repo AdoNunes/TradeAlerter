@@ -23,7 +23,7 @@
      python -c "print('Hello, World!')"
      ```
 
-2. In the PowerShell terminal navigate to the directory where you want to clone the DiscordAlertsTrader package, e.g. type: `cd Desktop`.
+2. In the PowerShell terminal navigate to the directory where you want to clone the TradeAlerter package, e.g. type: `cd Desktop`.
 
 3. Clone the package from the GitHub repository and install the package and its dependencies using pip:
    ```shell
@@ -41,4 +41,17 @@
    - Add your eTrade api keys, see next section for instructions
    - (Optional) Modify string_add_to_alert to add a text at the end of the alert
 
+7. Run the software by typing in the terminal:
+    ```shell 
+    python -c'from tradealerter.gui import gui; gui()'
+    ```
+
 **Setup eTrade API**
+
+Create a sandbox (mock) api key:
+https://us.etrade.com/etx/ris/apikey
+
+To get the production (real) keys, fill out the forms at the bottom of:
+https://developer.etrade.com/getting-started
+
+

@@ -16,7 +16,7 @@ with open(os.path.join('tradealerter', '__init__.py'), 'r') as fid:
             break
 
 setup(
-    name='TradeAlerter',
+    name='tradealerter',
     version='0.0.1',
     author='Adonay Nunes',
     author_email='adonays.nunes@gmail.com',
