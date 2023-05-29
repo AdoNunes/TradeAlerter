@@ -55,3 +55,9 @@ To get the production (real) keys, fill out the forms at the bottom of:
 https://developer.etrade.com/getting-started
 
 
+**Setup gmail api**
+
+1. Go to `https://console.developers.google.com/` and search for `gmail API`, click on it and enable it.
+2. In Gmail API, go on the left section and click Credentials, on the top click `+ create credentials` and then `OAuth client ID`.
+Application type, select Web applicaiton, chose a name, and click create on the bottom. 
+Download the JSON file to /tradealerter and save it as `gmail_api_keys.json`
