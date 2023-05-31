@@ -8,7 +8,7 @@ from tradealerter.configurator import cfg
 
 class orders_check():
     def __init__(self, queue=queue.Queue(maxsize=10)):
-        self.order_fname = op.join(cfg['root']['dir'], "orders.json")
+        self.order_fname = op.join(cfg['paths']['data'], "orders.json")
         if op.exists(self.order_fname):    
             with open(self.order_fname, 'r') as f:
                 self.orders = json.load(f)

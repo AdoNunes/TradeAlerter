@@ -6,10 +6,27 @@ from datetime import datetime
 import time
 import json
 import os
+import functools
 
 from tradealerter.configurator import cfg
 from tradealerter.brokerages import BaseBroker
 
+
+def retry_on_exception(retries=3, do_raise=False):
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            for attempt in range(1, retries+1):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    print(f"Exception occurred: {e}. Retrying... (Attempt {attempt}/{retries})")
+            if do_raise:
+                raise Exception(f"Method {func.__name__} failed after {retries} retries.")
+            else:
+                print(f"Method {func.__name__} failed after {retries} retries. Returning...")
+        return wrapper
+    return decorator
 
 class eTrade(BaseBroker):
     def __init__(self, account_n=0, accountId=None):
@@ -18,7 +35,7 @@ class eTrade(BaseBroker):
         self.account_n = account_n
         self.consumer_key = cfg["etrade"]["CONSUMER_KEY"]
         self.consumer_secret = cfg["etrade"]["CONSUMER_SECRET"]
-        self.token_fname = os.path.join(cfg['root']['dir'], "tokens.json")
+        self.token_fname = os.path.join(cfg['paths']['data'], "tokens.json")
         self.portfolio = []
         self.orders = []
 
@@ -83,6 +100,7 @@ class eTrade(BaseBroker):
             json.dump(self.tokens, f)
         return sessions() 
 
+    retry_on_exception()
     def _get_account(self):
         """
         Calls account list API to retrieve a list of the user's E*TRADE accounts
@@ -103,6 +121,7 @@ class eTrade(BaseBroker):
         self.access_token, self.access_token_secret = self.oauth.renew_access_token()
         print("Access token renewed.")
 
+    retry_on_exception()
     def check_orders(self):
         print("Checking orders...")
         accounts = self.account_session.list_accounts()
@@ -113,6 +132,7 @@ class eTrade(BaseBroker):
                 print(json.dumps(order, indent=2))
                 self.orders.append(order["orderId"])
 
+    retry_on_exception()
     def get_portfolio(self):
         print("Checking portfolio...")
         resp = self.account_session.get_account_portfolio(self.accountIdKey)        
@@ -151,6 +171,11 @@ class eTrade(BaseBroker):
         stopPrice= order['OrderDetail'][0]['Instrument'][0].get('stopPrice')
         timestamp = int(order['OrderDetail'][0]['placedTime'])
         enteredTime = datetime.fromtimestamp(timestamp/1000).strftime("%Y-%m-%d %H:%M:%S.%f")
+        if 'executedTime' in order['OrderDetail'][0]:
+            timestamp = int(order['OrderDetail'][0]['executedTime'])/1000
+            closeTime = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%dT%H:%M:%S+00")
+        else:
+            closeTime = enteredTime
         status = order['OrderDetail'][0]['status'].upper().replace('EXECUTED', 'FILLED').replace('OPEN',"WORKING")
         symbol = order['OrderDetail'][0]['Instrument'][0]['Product']['symbol']
         asset = 'stock' if order['orderType']=='EQ' else 'option' if order['orderType']=='OPTN' else "N/A"
@@ -170,10 +195,12 @@ class eTrade(BaseBroker):
             "order_id": order['orderId'],
             "stopPrice": stopPrice if stopPrice else None,
             'orderType':  order['OrderDetail'][0]['priceType'],
-            'enteredTime': enteredTime  
+            'enteredTime': enteredTime,
+            "closeTime": closeTime,
             }
         return order_info
 
+    retry_on_exception()
     def get_orders(self, status:str='ALL'):
         "status: ALL, WORKING, FILLED"
         assert status.upper() in ['ALL', 'WORKING', 'FILLED'], 'status must be ALL, WORKING, or FILLED'
@@ -183,7 +210,7 @@ class eTrade(BaseBroker):
             order_info = self.format_order(order)
             if status.upper() == 'ALL':
                 orders.append(order_info)
-            elif status.upper() == 'WORKING' and  order_info['status'] == 'OPEN':
+            elif status.upper() == 'WORKING' and  order_info['status'] == 'WORKING':
                 orders.append(order_info)
             elif status.upper() == 'FILLED' and order_info['status'] == 'FILLED':
                 orders.append(order_info)

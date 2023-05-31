@@ -14,4 +14,6 @@ if not os.path.exists(config_path):
 # load configuration file
 cfg = configparser.ConfigParser()
 cfg.read(config_path, encoding='utf-8')
-cfg['root']= {'dir': package_dir}
+cfg['paths']= {'root': package_dir,
+               'data': op.join(package_dir,'data')}
+os.makedirs(op.join(cfg['paths']['data']), exist_ok=True)
