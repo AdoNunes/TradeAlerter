@@ -19,10 +19,12 @@ class orders_check():
         if op.exists(self.port_fname):    
             self.port = pd.read_csv(self.port_fname)
         else:
-            self.port = pd.DataFrame(columns=['date','symbol', "isopen", "broker", 'qty', 'avg', 
-                                              'fills', 'price', 'ordID', "STC-price", "STC-date", 
-                                              "STC-ordID", "STC-fills", "STC-qty", 
-                                              "avg_dates", "avg_qty", "avg_prices"])
+            self.port = pd.DataFrame(columns=[
+                'date','symbol', "isopen", "broker", 'qty', 'fills', 'price', 'ordID',
+                "STC-price", "STC-date", "STC-ordID", "STC-fills", "STC-qty",
+                "STCs-price", "STCs-date", "STCs-ordID", "STCs-fills", "STCs-qty",  
+                'n_avg', "avg_dates", "avg_qty", "avg_prices", "avg_ordID"])
+
         self.bksession =  eTrade()
         self.bksession.get_session()
         self.queue = queue
@@ -92,39 +94,50 @@ class orders_check():
                 json.dump(self.orders, f)
         time.sleep(5)
 
-    def do_BTO(self, order):
+    def do_BTO(self, order)->str:
         "Make BUY order in portfolio"
-        self.port = self.port.append({'date': order['enteredTime'], 
-                                      'isopen':1,
-                                      'symbol': order['symbol'],
-                                      'broker': order['broker'], 
-                                      'qty': order['quantity'],
-                                      'fills': order['filledQuantity'], 
-                                      'price': order['price'], 
-                                      'ordID': order['order_id']
-                                      }, ignore_index=True)
+        self.port = self.port.append({
+                                    'date': order['enteredTime'], 
+                                    'isopen':1,
+                                    'symbol': order['symbol'],
+                                    'broker': order['broker'], 
+                                    'qty': order['quantity'],
+                                    'fills': order['filledQuantity'], 
+                                    'price': order['price'], 
+                                    'ordID': order['order_id']
+                                    }, ignore_index=True)
         return "New BTO order added to portfolio"
 
-    def do_BTO_avg(self, order, trade_ix):
-        "Make BUY order in portfolio"
+    def do_BTO_avg(self, order, trade_ix)->str:
+        "Make avergage BUY order in portfolio"
         trade = self.port.loc[trade_ix]
         
         n_avg = 0 if trade['avg'] is None else trade['avg']
-        n_fills = 0 if trade['fills'] is None else trade['fills']
+        fills = 0 if trade['fills'] is None else trade['fills']
         qty = 0 if trade['qty'] is None else trade['qty']
-        if n_fills != qty:
-            print(f"Trade {order['symbol']} not filled yet but new avg added")
+        assert fills != qty, f"Trade {order['symbol']} not filled yet but new avg added"
         price = (trade['price'] * trade['fills'] + order['price'] * order['filledQuantity'])/(trade['fills'] + order['filledQuantity'])
         
         avg_dates = "" if trade['avg_dates'] is None else trade['avg_dates'] + ","
         avg_qty = str(trade['fills']) if trade['avg_qty'] is None else trade['avg_qty'] + ","
         avg_prices = str(trade['price']) if trade['avg_prices'] is None else trade['avg_prices'] + ","
+        avg_ordID = trade['ordID'] if trade['ordID_avgs'] is None else trade['ordID_avgs'] + ","
         
-        self.port = self.port.append({'avg_dates': avg_dates + order['enteredTime'], 
-                                      'n_avg': n_avg + 1,                                  
-                                      'qty': qty + order['quantity'],
-                                      'fills': n_fills + order['filledQuantity'], 
-                                      'price': order['price'], 
-                                      'ordID': order['order_id']
-                                      }, ignore_index=True)
+        new_vals = {
+            'price': price,
+            'qty': qty + order['quantity'],
+            'fills': fills + order['filledQuantity'],
+            'avg_dates': avg_dates + order['enteredTime'], 
+            'n_avg': n_avg + 1,   
+            'avg_prices': avg_prices + str(order['price']) ,
+            'avg_qty': avg_qty + str(order['filledQuantity']),
+            'avg_ordID': avg_ordID + order['order_id']
+            }
+        for k, v in new_vals:
+            self.port.loc[trade_ix, k] = v
         return "New BTO avg order added to portfolio"
+        
+    def do_STC(self, order, trade_ix)->str:
+        "Make Sell order"
+        pass
+    
