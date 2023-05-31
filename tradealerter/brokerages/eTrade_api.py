@@ -173,7 +173,7 @@ class eTrade(BaseBroker):
         enteredTime = datetime.fromtimestamp(timestamp/1000).strftime("%Y-%m-%d %H:%M:%S.%f")
         if 'executedTime' in order['OrderDetail'][0]:
             timestamp = int(order['OrderDetail'][0]['executedTime'])/1000
-            closeTime = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%dT%H:%M:%S+00")
+            closeTime = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S.%f")
         else:
             closeTime = enteredTime
         status = order['OrderDetail'][0]['status'].upper().replace('EXECUTED', 'FILLED').replace('OPEN',"WORKING")
@@ -197,6 +197,7 @@ class eTrade(BaseBroker):
             'orderType':  order['OrderDetail'][0]['priceType'],
             'enteredTime': enteredTime,
             "closeTime": closeTime,
+            "broker": "etrade"
             }
         return order_info
 
