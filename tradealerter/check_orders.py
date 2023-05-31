@@ -55,7 +55,7 @@ class orders_check():
             match = re.search(exp, order['symbol'], re.IGNORECASE)
             if match:
                 symbol, date, type, strike = match.groups()
-                symb_str = f"{act} {qty} {symbol} {strike}{type} {date[:2]}/{date[2:4]} @{price}"
+                symb_str = f"{act} {qty} {symbol} {strike}{type} {date[:2]}/{date[2:4]} @{round(price,2)}"
         else:
             act = order['action'].replace('BUY', 'BTO').replace('SELL', 'STC')
             symb_str= f"{act} {qty} {order['symbol']} @{price}"
