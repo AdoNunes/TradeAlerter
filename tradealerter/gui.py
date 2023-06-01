@@ -7,6 +7,8 @@ import PySimpleGUI as sg
 
 from tradealerter.check_orders import orders_check
 
+DEV = True
+
 def reformat_date(date:str, in_form="%Y-%m-%d %H:%M:%S.%f", out_form="%m/%d %H:%M:%S")->str:
     dt = datetime.strptime(date, in_form)
     return dt.strftime(out_form)
@@ -14,7 +16,7 @@ def reformat_date(date:str, in_form="%Y-%m-%d %H:%M:%S.%f", out_form="%m/%d %H:%
 def gui():
     orders_queue = queue.Queue(maxsize=20)
     ord_checker = orders_check(orders_queue)
-    thread_orders =  threading.Thread(target=ord_checker.check_orders, args=(1,), daemon=True)
+    thread_orders =  threading.Thread(target=ord_checker.check_orders, args=(1, DEV,), daemon=True)
 
     # Initial layout
     layout = [[sg.Text('Last Orders, top is most recent')],
