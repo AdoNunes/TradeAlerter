@@ -59,7 +59,6 @@ class TestCheckOrders(unittest.TestCase):
         # Test BTO average
         order_buy_avg = self.check_orders.orders[1] 
         self.check_orders.track_portfolio(order_buy_avg)  
-        trade = self.check_orders.port.loc[0] 
         exp_price = round((order_buy['price']*order_buy['quantity'] + \
             order_buy_avg['price']*order_buy_avg['quantity'])/ \
             (order_buy['quantity']+order_buy_avg['quantity']), 2)
@@ -86,7 +85,6 @@ class TestCheckOrders(unittest.TestCase):
         # Test BTO avg 2
         order_buy_avg2 = self.check_orders.orders[2] 
         self.check_orders.track_portfolio(order_buy_avg2)  
-        trade = self.check_orders.port.loc[0]
         exp_price = round((order_buy['price']*order_buy['quantity'] + \
             order_buy_avg['price']*order_buy_avg['quantity']+ \
             order_buy_avg2['price']*order_buy_avg2['quantity'])/ \
@@ -111,7 +109,57 @@ class TestCheckOrders(unittest.TestCase):
             else:
                 self.assertEqual(trade[exp], val)
 
+        # Test STC
+        order_stc = self.check_orders.orders[3] 
+        self.check_orders.track_portfolio(order_stc)
+        trade = self.check_orders.port.loc[0]
+        
+        pnl = (order_stc['price'] - trade['price'])/trade['price']
+        pnldollars = pnl*trade['qty']*100
+        
+        expected_4 = {
+            "STC-price": order_stc['price'],
+            "STC-date": order_stc['closeTime'],
+            "STC-ordID": order_stc['order_id'],
+            "STC-fills": order_stc['filledQuantity'],
+            "STC-qty": order_stc['quantity'],
+            "PnL": pnl,
+            'PnL$': pnldollars,
+        }
+        # assert expected values
+        trade = self.check_orders.port.loc[0]
+        for exp, val in expected_3.items():
+            if isinstance(trade[exp], float):
+                self.assertAlmostEqual(trade[exp], val, places=2)
+            else:
+                self.assertEqual(trade[exp], val)
 
+
+        # Test STC
+        order_stc = self.check_orders.orders[4] 
+        self.check_orders.track_portfolio(order_stc)
+        trade = self.check_orders.port.loc[0]
+        
+        pnl = (order_stc['price'] - trade['price'])/trade['price']
+        pnldollars = pnl*trade['qty']*100
+        
+        expected_5 = {
+            "STC-price": order_stc['price'],
+            "STC-date": order_stc['closeTime'],
+            "STC-ordID": order_stc['order_id'],
+            "STC-fills": order_stc['filledQuantity'],
+            "STC-qty": order_stc['quantity'],
+            "PnL": pnl,
+            'PnL$': pnldollars,
+        }
+        # assert expected values
+        trade = self.check_orders.port.loc[0]
+        for exp, val in expected_5.items():
+            if isinstance(trade[exp], float):
+                self.assertAlmostEqual(trade[exp], val, places=2)
+            else:
+                self.assertEqual(trade[exp], val)
+                
 
     def tearDown(self):
         pass
