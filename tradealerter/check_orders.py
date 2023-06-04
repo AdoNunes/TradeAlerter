@@ -14,12 +14,14 @@ class orders_check():
                  port_fname = op.join(cfg['paths']['data'], "portfolio.csv"),
                  bksession=None
                  ):
+        # load orders
         self.order_fname = order_fname
         if op.exists(self.order_fname):    
             with open(self.order_fname, 'r') as f:
                 self.orders = json.load(f)
         else:
             self.orders = []
+        # load portfolio
         self.port_fname = port_fname
         if op.exists(self.port_fname):    
             self.port = pd.read_csv(self.port_fname)
@@ -29,7 +31,7 @@ class orders_check():
                 'PnL', "PnL$", "PnLs", "PnLs$", "asset",
                 "STC-price", "STC-date", "STC-ordID", "STC-fills", "STC-qty", 
                 "STCs-price", "STCs-date", "STCs-ordID", "STCs-fills", "STCs-qty",
-                "avg_date", "avg_qty", "avg_price", "avg_ordID"])
+                "avg_date", "avg_qty", "avg_price", "avg_ordID", 'BTO-n', 'STC-n', 'BTOs-sent', 'STCs-sent'])
         
         if bksession is None:
             self.bksession =  eTrade()
@@ -48,11 +50,10 @@ class orders_check():
             et_orders = self.bksession.get_orders('FILLED')
             for eto in et_orders[-1::-1]:                
                 if not len(self.orders) or eto['order_id'] not in [o['order_id'] for o in self.orders]:
-                    print(eto)
-                    alert = f"{self.make_alert(eto)} {alert_sufix}"
+                    msg = self.track_portfolio(eto)
+                    alert = f"{self.make_alert(eto)} {alert_sufix} {msg}"
                     self.queue.put([alert, eto['closeTime']])
                     self.orders.append(eto)
-                    print('found order')
             # save pushed orders
             if len(self.orders):
                 with open(self.order_fname, 'w') as f:
@@ -76,6 +77,10 @@ class orders_check():
             symb_str= f"{act} {qty} {order['symbol']} @{price}"
         return symb_str
 
+    def extra_info_from_port():
+        
+        return
+    
     def track_portfolio(self, order):
         "Track portfolio, update portfolio.csv"
 
@@ -92,30 +97,36 @@ class orders_check():
             
         # track portfolio
         if order['action'].startswith('BUY') and not isopen:
-            msg = self.do_BTO(order)
+            port_info = self.do_BTO(order)
         elif order['action'].startswith('BUY') and isopen:
-            msg = self.do_BTO_avg(order, trade_ix)
-        elif order['action'].startswith('SELL'):
-            msg = self.do_STC(order, trade_ix)
-        # save pushed orders
-        if len(self.orders):
-            with open(self.order_fname, 'w') as f:
-                json.dump(self.orders, f)
-        time.sleep(5)
+            port_info = self.do_BTO_avg(order, trade_ix)
+            port_info["index"] = trade_ix
+        elif order['action'].startswith('SELL') and isopen:
+            port_info = self.do_STC(order, trade_ix)
+            port_info["index"] = trade_ix
+        elif order['action'].startswith('SELL') and not isopen:
+            port_info = {"message":"STC order without BTO"}
+        # save portfolio
+        if port_info.get('message') != "STC order without BTO":
+            self.port.to_csv(self.port_fname, index=False)
+        
+        return port_info
 
     def do_BTO(self, order):
         "Make BUY order in portfolio"
         new_trade = {'date': order['closeTime'],
              'isopen': 1,
              'symbol': order['symbol'],
+             'asset': order['asset'],
              'broker': order['broker'],
              'qty': order['quantity'],
              'fills': order['filledQuantity'],
              'price': order['price'],
-             'ordID': order['order_id']
+             'ordID': order['order_id'],
+             'BTO-n' : 1
              }
         self.port = pd.concat([self.port, pd.DataFrame(new_trade, index=[0])], ignore_index=True)
-        return "New BTO order added to portfolio"
+        return new_trade
 
     def do_BTO_avg(self, order, trade_ix):
         "Make BUY order in portfolio"
@@ -128,7 +139,7 @@ class orders_check():
         price = (trade['price'] * trade['fills'] + order['price'] * order['filledQuantity'])/\
                     (trade['fills'] + order['filledQuantity'])
         
-        new_trade = {
+        avg_trade = {
                     'avged': int(n_avg + 1),
                     'avg_date': self.combine_prevs(trade_ix, order['closeTime'], 'date', 'avg_date'),
                     'avg_qty':  self.combine_prevs(trade_ix, order['quantity'], 'qty', 'avg_qty'),
@@ -137,12 +148,13 @@ class orders_check():
                     'qty': qty + order['quantity'],
                     'fills': n_fills + int(order['filledQuantity']), 
                     'price': round(price, 2), 
-                    'ordID': order['order_id']
+                    'ordID': order['order_id'],
+                    'BTO-n' : trade['BTO-n'] + 1,
                     }
-        for k, v in new_trade.items():
+        for k, v in avg_trade.items():
             self.port.loc[trade_ix, k] = v
         
-        return "New BTO avg order added to portfolio"
+        return avg_trade
 
     def do_STC(self, order, trade_ix):
         "Make SELL order in portfolio"
@@ -156,45 +168,59 @@ class orders_check():
 
         if pd.isna(trade['STC-price']):
             # First STC for the trade
-            self.port.loc[trade_ix, 'STC-price'] = stc_price
-            self.port.loc[trade_ix, 'STC-date'] = stc_date
-            self.port.loc[trade_ix, 'STC-ordID'] = order['order_id']
-            self.port.loc[trade_ix, 'STC-fills'] = stc_fills
-            self.port.loc[trade_ix, 'STC-qty'] = stc_qty
+            stc_trade = {
+                'STC-price': stc_price,
+                'STC-date': stc_date,
+                'STC-ordID': order['order_id'],
+                'STC-fills': stc_fills,
+                'STC-qty': stc_qty 
+                }
+            for k, v in stc_trade.items():
+                self.port.loc[trade_ix, k] = v
+
             # Calculate PnL
-            pnl_perc = round((trade['STC-price'] - trade['price']) / trade['price'] * 100, 2)
-            pnl_dollar = round((trade['STC-price'] - trade['price']) * trade['STC-qty'], 2)
-            self.port.loc[trade_ix, 'PnL'] = pnl_perc
-            self.port.loc[trade_ix, 'PnL$'] = pnl_dollar
+            trade = self.port.loc[trade_ix]
+            pnl_perc = (trade['STC-price'] - trade['price']) / trade['price'] * 100
+            pnl_dollar = round(pnl_perc* trade['price'] * trade['STC-qty']*pnlq_mult, 2)
+            stc_trade['PnL'] = round(pnl_perc, 2)
+            stc_trade['PnL$'] = pnl_dollar
+            stc_trade['STC-n'] = 1
+            self.port.loc[trade_ix, 'PnL'] = stc_trade['PnL']
+            self.port.loc[trade_ix, 'PnL$'] = stc_trade['PnL$']
+            self.port.loc[trade_ix, 'STC-n'] = stc_trade['STC-n']
+            
         else:
             # Multiple STCs for the trade, calculate average values
             prev_stc_price = trade['STC-price']
             prev_stc_fills = trade['STC-fills']
             prev_stc_qty = trade['STC-qty']
-            
-            curr_pnl = (stc_price - trade['price'])/trade['price'] * 100            
-            curr_pnlq = curr_pnl * trade['price'] * stc_qty * pnlq_mult
-            
-            self.port.loc[trade_ix, 'STCs-date'] = self.combine_prevs(trade_ix, stc_date, 'STC-date', 'STCs-date') 
-            self.port.loc[trade_ix, 'STCs-qty'] = self.combine_prevs(trade_ix, stc_qty, 'STC-qty', 'STCs-qty')
-            self.port.loc[trade_ix, 'STCs-price'] = self.combine_prevs(trade_ix, stc_price, 'STC-price', 'STCs-price')
-            self.port.loc[trade_ix, 'STCs-ordID'] = self.combine_prevs(trade_ix, order['order_id'],'STC-ordID', 'STCs-ordID')
-            self.port.loc[trade_ix, 'PnLs'] = self.combine_prevs(trade_ix, curr_pnl,'PnL', 'PnLs')
-            self.port.loc[trade_ix, 'PnLs$'] = self.combine_prevs(trade_ix, curr_pnlq,'PnL$', 'PnLs$')
-
             tot_fills = prev_stc_fills + stc_fills
             avg_price = (prev_stc_price * prev_stc_fills + stc_price * stc_fills) / tot_fills
+            curr_pnl = (stc_price - trade['price'])/trade['price'] * 100            
+            curr_pnlq = curr_pnl * trade['price'] * stc_qty * pnlq_mult
+            pnl = (avg_price - trade['price'])/trade['price'] * 100 
+            # save multiple stcs values
+            stc_trade = {
+                'STCs-date':self.combine_prevs(trade_ix, stc_date, 'STC-date', 'STCs-date'),
+                'STCs-qty': self.combine_prevs(trade_ix, stc_qty, 'STC-qty', 'STCs-qty'),
+                'STCs-price': self.combine_prevs(trade_ix, stc_price, 'STC-price', 'STCs-price'),
+                'STCs-ordID': self.combine_prevs(trade_ix, order['order_id'],'STC-ordID', 'STCs-ordID'),
+                'STCs-fills': self.combine_prevs(trade_ix, order['filledQuantity'],'STC-fills', 'STCs-fills'),
+                'PnLs': self.combine_prevs(trade_ix, round(curr_pnl,2),'PnL', 'PnLs'),
+                'PnLs$': self.combine_prevs(trade_ix, round(curr_pnlq,2),'PnL$', 'PnLs$'),    
+                'STC-price': avg_price,
+                'STC-date': stc_date,
+                'STC-ordID': order['order_id'],
+                'STC-fills': tot_fills,
+                'STC-qty': prev_stc_qty + stc_qty,   
+                'PnL': round(pnl,2),
+                'PnL$': round(pnl * trade['price'] * (prev_stc_qty + stc_qty) * pnlq_mult,2),
+                'STC-n': trade['STC-n'] + 1  
+                }
+            for k, v in stc_trade.items():
+                self.port.loc[trade_ix, k] = v
 
-            self.port.loc[trade_ix, 'STC-price'] = avg_price
-            self.port.loc[trade_ix, 'STC-date'] = stc_date
-            self.port.loc[trade_ix, 'STC-ordID'] = order['order_id']
-            self.port.loc[trade_ix, 'STC-fills'] = tot_fills
-            self.port.loc[trade_ix, 'STC-qty'] = prev_stc_qty + stc_qty
-
-            self.port.loc[trade_ix, 'PnL'] = (avg_price - trade['price'])/trade['price'] * 100 
-            self.port.loc[trade_ix, 'PnL$'] = curr_pnl * trade['price'] * stc_qty * pnlq_mult
-
-        return "New STC order added to portfolio"
+        return stc_trade
     
     
     def combine_prevs(self, trade_ix:int, new_val, col_main:str, col_cum:str)->str:
