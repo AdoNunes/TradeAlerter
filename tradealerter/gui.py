@@ -20,10 +20,13 @@ def gui():
 
     # Initial layout
     layout = [[sg.Text('Last Orders, top is most recent')],
-            [[sg.Text(key=f'-DATE{i}-', text_color='black'), 
+            [[
+                sg.Button('Copy', key=f'-COPY{i}-'),
+                sg.Text(key=f'-DATE{i}-', text_color='black'), 
                 sg.Text(key=f'-ORDER{i}-'), sg.Push(),
-                sg.Button('Copy', key=f'-COPY{i}-')] for i in range(5)
-                ] + [sg.Stretch()],
+                sg.Button('Send', key=f'-SEND{i}-', visible=False)] for i in range(5)
+                ] + 
+            [sg.Stretch()],
             ]
 
     window = sg.Window('Trade Alerter', layout, resizable=True, finalize=True)
@@ -43,12 +46,26 @@ def gui():
             print(new_order)        
             last_orders.insert(0,new_order)
             last_dates.insert(0, reformat_date(date))
+            prev_disab, prev_txt = False, 'Send'
             for i in range(min([len(last_orders),5])):
-                window[f'-ORDER{i}-'].update(value=last_orders[i])
+                color = "green" if last_orders[i].startswith('BTO') else "red"
+                window[f'-ORDER{i}-'].update(value=last_orders[i], text_color =color, background_color='white')
                 window[f'-DATE{i}-'].update(value=last_dates[i])
+                next_state =  window[f'-SEND{i}-'].get_text()
+                if "STC" in last_orders[i]:
+                    window[f'-SEND{i}-'].update(visible=True, disabled=True, text='Sent')
+                else:
+                    window[f'-SEND{i}-'].update(visible=True, disabled=prev_disab, text=prev_txt)
+                prev_disab, prev_txt = next_state == 'Sent', next_state
         except Empty:
             pass
         
+        # If copy button is clicked
+        if event.startswith('-SEND'):
+            # Get the index of the clicked button
+            index = int(event[-2]) 
+            window[f'-SEND{index}-'].update(disabled=True, text='Sent')
+            
         # If copy button is clicked
         if event.startswith('-COPY'):
             # Get the index of the clicked button

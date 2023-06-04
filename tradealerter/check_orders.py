@@ -50,10 +50,11 @@ class orders_check():
             et_orders = self.bksession.get_orders('FILLED')
             for eto in et_orders[-1::-1]:                
                 if not len(self.orders) or eto['order_id'] not in [o['order_id'] for o in self.orders]:
-                    msg = self.track_portfolio(eto)
-                    alert = f"{self.make_alert(eto)} {alert_sufix} {msg}"
+                    port_info = self.track_portfolio(eto)
+                    alert = f"{self.make_alert(eto)} {alert_sufix}"
                     self.queue.put([alert, eto['closeTime']])
                     self.orders.append(eto)
+                    time.sleep(1)
             # save pushed orders
             if len(self.orders):
                 with open(self.order_fname, 'w') as f:
