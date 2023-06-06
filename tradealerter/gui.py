@@ -13,23 +13,37 @@ def reformat_date(date:str, in_form="%Y-%m-%d %H:%M:%S.%f", out_form="%m/%d %H:%
     dt = datetime.strptime(date, in_form)
     return dt.strftime(out_form)
 
+def layout():
+    tab1_els = [
+        [sg.Button('Copy', key=f'-COPY{i}-'),
+        sg.Text(key=f'-DATE{i}-', text_color='black'), 
+        sg.Text(key=f'-ORDER{i}-'), sg.Push(),
+        sg.Button('Send', key=f'-SEND{i}-', visible=False)
+        ] for i in range(5)
+        ]
+    tab1_els =[[sg.Text('Last Orders, top is most recent')]]+tab1_els
+    tab1 = sg.Tab("Last Orders", tab1_els)
+    tab2 = sg.Tab("Parsed Orders", [        
+        [sg.Text('List of Orders')],            
+            [sg.Stretch()],
+            ])
+    # Initial layout
+    tab_group_layout = [[tab1, tab2]]
+    tab_group = sg.TabGroup(tab_group_layout)
+
+    # Create the main layout
+    layout = [[tab_group]]
+    return layout
+
+def send_order():
+    pass
+
 def gui():
     orders_queue = queue.Queue(maxsize=20)
     ord_checker = orders_check(orders_queue)
     thread_orders =  threading.Thread(target=ord_checker.check_orders, args=(1, DEV,), daemon=True)
 
-    # Initial layout
-    layout = [[sg.Text('Last Orders, top is most recent')],
-            [[
-                sg.Button('Copy', key=f'-COPY{i}-'),
-                sg.Text(key=f'-DATE{i}-', text_color='black'), 
-                sg.Text(key=f'-ORDER{i}-'), sg.Push(),
-                sg.Button('Send', key=f'-SEND{i}-', visible=False)] for i in range(5)
-                ] + 
-            [sg.Stretch()],
-            ]
-
-    window = sg.Window('Trade Alerter', layout, resizable=True, finalize=True)
+    window = sg.Window('Trade Alerter', layout(), resizable=True, finalize=True)
 
     thread_orders.start()
     last_orders, last_dates = [], []
@@ -43,7 +57,6 @@ def gui():
 
         try:
             new_order, date = orders_queue.get(False)
-            print(new_order)        
             last_orders.insert(0,new_order)
             last_dates.insert(0, reformat_date(date))
             prev_disab, prev_txt = False, 'Send'
