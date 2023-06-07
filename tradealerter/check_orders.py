@@ -43,16 +43,16 @@ class orders_check():
     def check_orders(self, refresh_rate=1,
                      dev=False,
                      alert_sufix=cfg['alert_configs']['string_add_to_alert']):
-        "Pool filled orders, generate alert and push it with date to queue"
+        "Pool filled orders, generate alert and push it with date and inx to queue"
         if dev:
             self.orders = []
         while True:
             et_orders = self.bksession.get_orders('FILLED')
             for eto in et_orders[-1::-1]:                
                 if not len(self.orders) or eto['order_id'] not in [o['order_id'] for o in self.orders]:
-                    port_info = self.track_portfolio(eto)
+                    port_info, trade_ix = self.track_portfolio(eto)
                     alert = f"{self.make_alert(eto)} {alert_sufix}"
-                    self.queue.put([alert, eto['closeTime']])
+                    self.queue.put([alert, eto['closeTime'], trade_ix])
                     self.orders.append(eto)
                     time.sleep(1)
             # save pushed orders
@@ -82,12 +82,7 @@ class orders_check():
         
         return
     
-    def track_portfolio(self, order):
-        "Track portfolio, update portfolio.csv"
-
-        if order['status'] != 'FILLED':
-            print("order not filled")
-            return
+    def get_trade_ix(self, order):
         open_trade = (self.port['symbol'] == order['symbol']) & \
                      (self.port['isopen'] == 1) & \
                      (self.port['broker'] == order['broker'])
@@ -95,10 +90,20 @@ class orders_check():
             isopen, trade_ix = open_trade.any(), open_trade.idxmax()
         else:
             isopen, trade_ix = False, None
-            
+        return isopen, trade_ix
+    
+    def track_portfolio(self, order):
+        "Track portfolio, update portfolio.csv"
+
+        if order['status'] != 'FILLED':
+            print("order not filled")
+            return
+        
+        isopen, trade_ix = self.get_trade_ix(order)
         # track portfolio
         if order['action'].startswith('BUY') and not isopen:
             port_info = self.do_BTO(order)
+            isopen, trade_ix = self.get_trade_ix(order)
         elif order['action'].startswith('BUY') and isopen:
             port_info = self.do_BTO_avg(order, trade_ix)
             port_info["index"] = trade_ix
@@ -107,12 +112,16 @@ class orders_check():
             port_info["index"] = trade_ix
         elif order['action'].startswith('SELL') and not isopen:
             port_info = {"message":"STC order without BTO"}
+            trade_ix = None
         # save portfolio
         if port_info.get('message') != "STC order without BTO":
-            self.port.to_csv(self.port_fname, index=False)
+            self.save_portfolio()
         
-        return port_info
+        return port_info, trade_ix
 
+    def save_portfolio(self):
+        self.port.to_csv(self.port_fname, index=False)
+        
     def do_BTO(self, order):
         "Make BUY order in portfolio"
         new_trade = {'date': order['closeTime'],
@@ -124,7 +133,9 @@ class orders_check():
              'fills': order['filledQuantity'],
              'price': order['price'],
              'ordID': order['order_id'],
-             'BTO-n' : 1
+             'BTO-n' : 1,
+             'BTOs-sent':0,
+             'STCs-sent':0,
              }
         self.port = pd.concat([self.port, pd.DataFrame(new_trade, index=[0])], ignore_index=True)
         return new_trade
