@@ -54,7 +54,8 @@ class orders_check():
                     alert = f"{self.make_alert(eto)} {alert_sufix}"
                     self.queue.put([alert, eto['closeTime'], trade_ix])
                     self.orders.append(eto)
-                    time.sleep(1)
+                    if dev:
+                        time.sleep(3)
             # save pushed orders
             if len(self.orders):
                 with open(self.order_fname, 'w') as f:

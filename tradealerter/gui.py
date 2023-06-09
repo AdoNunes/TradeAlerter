@@ -10,7 +10,9 @@ from discord_webhook import DiscordWebhook
 from tradealerter.check_orders import orders_check
 from tradealerter.configurator import cfg
 
-DEV = True
+
+DEV = False
+NORDERS = 10
 
 def reformat_date(date:str, in_form="%Y-%m-%d %H:%M:%S.%f", out_form="%m/%d %H:%M:%S")->str:
     dt = datetime.strptime(date, in_form)
@@ -18,28 +20,27 @@ def reformat_date(date:str, in_form="%Y-%m-%d %H:%M:%S.%f", out_form="%m/%d %H:%
 
 def layout():
     tab1_els = [
-        [sg.Button('Copy', key=f'-COPY{i}-'),
-        sg.Text(key=f'-DATE{i}-', text_color='black'), 
-        sg.Text(key=f'-ORDER{i}-'), sg.Push(),
+        [sg.Button('Copy', key=f'-COPY{i}-', visible=False),sg.Push(),
+        sg.Text(key=f'-DATE{i}-', text_color='black', visible=False), 
+        sg.Text(key=f'-ORDER{i}-', visible=False), sg.Push(),
         sg.Button('Send', key=f'-SEND{i}-', visible=False)
-        ] for i in range(5)
+        ] for i in range(NORDERS)
         ]
-    tab1_els =[[sg.Text('Last Orders, top is most recent')]]+tab1_els
+    tab1_els =[[sg.Text('Top is most recent, if a BTO is sent, the STC will be sent automatically')]]+tab1_els
     tab1 = sg.Tab("Last Orders", tab1_els)
     tab2 = sg.Tab("Parsed Orders", [        
         [sg.Text('List of Orders')],            
             [sg.Stretch()],
             ])
     # Initial layout
-    tab_group_layout = [[tab1, tab2]]
+    tab_group_layout = [[tab1]]
     tab_group = sg.TabGroup(tab_group_layout)
 
     # Create the main layout
     layout = [[tab_group]]
     return layout
 
-def send_order(order, port):
-    
+def send_order(order, port):  
     sent = False
     if len(cfg['discord']['webhook']):
         webhook = DiscordWebhook(
@@ -48,7 +49,7 @@ def send_order(order, port):
             content= order['alert'], 
             rate_limit_retry=True)
         response = webhook.execute()
-        print("webhook sent, response:", response.json())
+        print("webhook alert sent")
         sent = True
     
     if sent:
@@ -58,6 +59,7 @@ def send_order(order, port):
         elif order['alert'].startswith('STC'):
             port.loc[order['port_ix'], 'STCs-sent'] += 1
     return order
+
 
 def gui():
     orders_queue = queue.Queue(maxsize=20) # list with alert, date and port ix
@@ -97,20 +99,19 @@ def gui():
                     (pd.Series(trade['BTOs-sent']) - trade['BTO-n']).ge(0).all():
                     status = "do_send"
                 else:
-                    status = "Sent"
+                    status = "Send"
             
             order = {'alert': new_order, 'date': reformat_date(date), 'port_ix': port_ix, 'status': status}
             last_items.insert(0,order)
         
-            for i in range(min([len(last_items),5])):
-                color = "green" if last_items[i]['alert'].startswith('BTO') else "red"
+            for i in range(min([len(last_items),NORDERS])):
+                color = "aquamarine4" if last_items[i]['alert'].startswith('BTO') else "indianred"
                 status = last_items[i]['status']
-                window[f'-ORDER{i}-'].update(value=last_items[i]['alert'], text_color =color, background_color='white')
-                window[f'-DATE{i}-'].update(value=last_items[i]['date'])                
-                window[f'-SEND{i}-'].update(visible=True, disabled=(status=='Sent'), text=status)
+                window[f'-COPY{i}-'].update(visible=True)
+                window[f'-ORDER{i}-'].update(visible=True,value=last_items[i]['alert'], text_color =color, background_color='white')
+                window[f'-DATE{i}-'].update(visible=True,value=last_items[i]['date'])                
+                window[f'-SEND{i}-'].update(visible=True, disabled=(status=='Sent'), text=status)                
                 if status == "do_send":
-                    print("I shall send this STC")
-                    time.sleep(1)
                     last_items[index] = send_order(last_items[index], ord_checker.port)
                     ord_checker.save_portfolio()
                     status = last_items[i]['status']
@@ -128,14 +129,15 @@ def gui():
             ord_checker.save_portfolio()
             status = last_items[i]['status']
             window[f'-SEND{index}-'].update(disabled=(status=='Sent'), text=status)
-            
+            window.refresh()
+        
         # If copy button is clicked
         if event.startswith('-COPY'):
             # Get the index of the clicked button
-            index = int(event[-2])  
+            index = int(event[5:-1])  
             # If there's at leaast nth order, copy to clipboard
-            if len(last_orders) and len(last_orders) >= index:  
-                sg.clipboard_set(last_orders[index])  
+            if len(last_items) and len(last_items) >= index:  
+                sg.clipboard_set(last_items[index]['alert'])  
 
     window.close()
 
