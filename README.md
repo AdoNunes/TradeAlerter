@@ -74,7 +74,7 @@ Contact me if you want the upcoming features faster :)
     python -c'from tradealerter.gui import gui; gui()'
     ```
 
-##Setup eTrade API
+## Setup eTrade API
 __________________
 
 Create a sandbox (mock) api key (you must be logged in in another tab before clicking the link):
