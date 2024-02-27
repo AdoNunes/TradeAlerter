@@ -11,8 +11,8 @@ from tradealerter.check_orders import orders_check
 from tradealerter.configurator import cfg
 
 
-DEV = False
-NORDERS = 10
+DEV = cfg['alert_configs'].getboolean('DEV')
+NORDERS = int(cfg['alert_configs']['norders'])
 
 def reformat_date(date:str, in_form="%Y-%m-%d %H:%M:%S.%f", out_form="%m/%d %H:%M:%S")->str:
     dt = datetime.strptime(date, in_form)
@@ -86,7 +86,9 @@ def gui():
                 continue
             trade = ord_checker.port.loc[port_ix]
             if new_order.startswith("BTO"):
-                if (pd.Series(trade['BTOs-sent']) - trade['BTO-n']).lt(0).all():
+                if cfg['alert_configs']['send_all_BTOs']:
+                    status = "do_send"
+                elif (pd.Series(trade['BTOs-sent']) - trade['BTO-n']).lt(0).all():
                     status = "Send"
                 else:
                     status = "Sent"
@@ -112,7 +114,7 @@ def gui():
                 window[f'-DATE{i}-'].update(visible=True,value=last_items[i]['date'])                
                 window[f'-SEND{i}-'].update(visible=True, disabled=(status=='Sent'), text=status)                
                 if status == "do_send":
-                    last_items[index] = send_order(last_items[index], ord_checker.port)
+                    last_items[i] = send_order(last_items[i], ord_checker.port)
                     ord_checker.save_portfolio()
                     status = last_items[i]['status']
                     window[f'-SEND{i}-'].update(visible=True, disabled=(status=='Sent'), text=status)

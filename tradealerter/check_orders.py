@@ -4,8 +4,8 @@ import json
 import pandas as pd
 import re
 import queue
-from tradealerter.brokerages.eTrade_api import eTrade
 from tradealerter.configurator import cfg
+from tradealerter.brokerages import get_brokerage
 
 class orders_check():
     def __init__(self, 
@@ -21,6 +21,7 @@ class orders_check():
                 self.orders = json.load(f)
         else:
             self.orders = []
+        
         # load portfolio
         self.port_fname = port_fname
         if op.exists(self.port_fname):    
@@ -34,41 +35,50 @@ class orders_check():
                 "avg_date", "avg_qty", "avg_price", "avg_ordID", 'BTO-n', 'STC-n', 'BTOs-sent', 'STCs-sent'])
         
         if bksession is None:
-            self.bksession =  eTrade()
+            self.bksession =  get_brokerage()
         else:
             self.bksession = bksession()
         self.bksession.get_session()
         self.queue = queue
+        
+        # load previous orders, dont send them
+        if not cfg['alert_configs'].getboolean('DEV'):
+            self._read_orders(False, "", False)
 
     def check_orders(self, refresh_rate=1,
                      dev=False,
-                     alert_sufix=cfg['alert_configs']['string_add_to_alert']):
+                     alert_sufix=cfg['alert_configs']['string_add_to_alert'],
+                     alert=True):
         "Pool filled orders, generate alert and push it with date and inx to queue"
         if dev:
             self.orders = []
         while True:
-            et_orders = self.bksession.get_orders('FILLED')
-            for eto in et_orders[-1::-1]:                
-                if not len(self.orders) or eto['order_id'] not in [o['order_id'] for o in self.orders]:
-                    port_info, trade_ix = self.track_portfolio(eto)
-                    alert = f"{self.make_alert(eto)} {alert_sufix}"
-                    self.queue.put([alert, eto['closeTime'], trade_ix])
-                    self.orders.append(eto)
-                    if dev:
-                        time.sleep(3)
-            # save pushed orders
-            if len(self.orders):
-                with open(self.order_fname, 'w') as f:
-                    json.dump(self.orders, f)
+            self._read_orders(dev,alert_sufix, alert)
             time.sleep(refresh_rate)
     
+    def _read_orders(self, dev, alert_sufix, alert):
+        et_orders = self.bksession.get_orders('FILLED')
+        for eto in et_orders[-1::-1]:                
+            if not len(self.orders) or eto['order_id'] not in [o['order_id'] for o in self.orders]:
+                _, trade_ix = self.track_portfolio(eto)                
+                if alert:
+                    alert = f"{self.make_alert(eto)} {alert_sufix}"
+                    self.queue.put([alert, eto['closeTime'], trade_ix])
+                self.orders.append(eto)
+                if dev:
+                    time.sleep(5)
+        # save pushed orders
+        if len(self.orders):
+            with open(self.order_fname, 'w') as f:
+                json.dump(self.orders, f)
+
     def make_alert(self, order:dict)->str:
         """ From order makes alert with format BTO|STC Qty Symbol [Strike] [Date] @ Price"""
         qty = order['quantity']
         price = order['price']
         if "_" in order['symbol']:
             # option
-            act = order['action'].replace('BUY_OPEN', 'BTO').replace('SELL_CLOSE', 'STC')
+            act = order['action'].replace('BUY_OPEN', 'BTO').replace('SELL_CLOSE', 'STC').replace('BUY', 'BTO').replace('SELL', 'STC')
             exp = r"(\w+)_(\d{6})([CP])([\d.]+)"        
             match = re.search(exp, order['symbol'], re.IGNORECASE)
             if match:
@@ -80,7 +90,6 @@ class orders_check():
         return symb_str
 
     def extra_info_from_port():
-        
         return
     
     def get_trade_ix(self, order):
@@ -96,7 +105,7 @@ class orders_check():
     def track_portfolio(self, order):
         "Track portfolio, update portfolio.csv"
 
-        if order['status'] != 'FILLED':
+        if order['status'].upper() != 'FILLED':
             print("order not filled")
             return
         
