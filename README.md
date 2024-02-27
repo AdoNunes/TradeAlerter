@@ -1,3 +1,31 @@
+# Trade Alerter #
+
+This Package provides real-time trade notifications using brokerage APIs (currently supporting etrade). It instantly alerts you when a stock or option buy or sell order is executed, ensuring efficient trade alerting. You can either copy the text alert or send it if you have a webhook (soon send it as a discord user). Don't waste time typing trade alerts manually - start using TradeAlerter to effortlessly share your alerts on Discord without typos and delays!
+
+
+### Key Features:
+**Instant Trade Notifications**: Send real-time (for real) alerts for filled orders without delay.
+
+**Automated Sell Alerts**: Automatically send sell alerts (STC) if the buy alert (BTO) was sent.
+
+**Discord Integration**: Effortlessly send trade alerts to your designated Discord channel. Eliminate the need for manual alerts in Discord servers.
+
+
+
+### Upcoming Features:
+**Expanded Brokerage Support**: Integration with more brokerages and monitor order fills through emails.
+
+**Automated Buy Alerts**: Choose between automatic buy-to-open (BTO) orders or set a specific number of alerts to be sent automatically.
+
+**Discord User Alerts**: Send trade alerts directly as a Discord user, simplifying the process further.
+
+**Advanced STC Details**: Include additional information in STC alerts such as bought price, profit, and more.
+
+
+This app can help to reduce delays in trade alerts, this is crucial for momentum trading. Traders alerting trades in discord servers should NOT send alerts manually!
+
+Contact me if you want the upcoming features faster :)
+
 
 ## Installation and Setup
  ______________________________
@@ -46,12 +74,19 @@
     python -c'from tradealerter.gui import gui; gui()'
     ```
 
-**Setup eTrade API**
+## Setup eTrade API
+__________________
 
-Create a sandbox (mock) api key:
+Create a sandbox (mock) api key (you must be logged in in another tab before clicking the link):
 https://us.etrade.com/etx/ris/apikey
 
 To get the production (real) keys, fill out the forms at the bottom of:
 https://developer.etrade.com/getting-started
 
 
+Disclaimer
+_________
+
+The code and package provided in this repository is provided "as is" and without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose, and noninfringement. In no event shall the author or contributors be liable for any claim, damages, or other liability, whether in an action of contract, tort, or otherwise, arising from, out of, or in connection with the code or package or the use or other dealings in the code or package.
+
+Please use this code and package at your own risk. The author and contributors disclaim all liability and responsibility for any errors or issues that may arise from its use. It is your responsibility to test and validate the code and package for your particular use case.
