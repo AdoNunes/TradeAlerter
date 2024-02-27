@@ -66,8 +66,9 @@ Contact me if you want the upcoming features faster :)
    ```
 
 6. Edit the `tradealerter/config.ini` file to add your brokerage keys:
-   - Add your eTrade api keys, see next section for instructions
+   - Add your eTrade/webull api keys, see next section for instructions
    - (Optional) Modify string_add_to_alert to add a text at the end of the alert
+   - (Optional) Set send all BTO to automatically send any BTO and its STCs, otherwise to alert BTO you will have to click send
 
 7. Run the software by typing in the terminal:
     ```shell 
@@ -83,10 +84,18 @@ https://us.etrade.com/etx/ris/apikey
 To get the production (real) keys, fill out the forms at the bottom of:
 https://developer.etrade.com/getting-started
 
+## Webull API
+__________________
+
+You will need to get a device ID, follow these steps to get DID, and then save it in the config.ini, along with credential details: https://github.com/tedchou12/webull/wiki/Workaround-for-Login-Method-2
+
+Trading pin is the 6 digit code used to unlock webull
+
+
 
 Disclaimer
 _________
 
-The code and package provided in this repository is provided "as is" and without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose, and noninfringement. In no event shall the author or contributors be liable for any claim, damages, or other liability, whether in an action of contract, tort, or otherwise, arising from, out of, or in connection with the code or package or the use or other dealings in the code or package.
+The code and package provided in this repository are provided "as is" and without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose, and noninfringement. In no event shall the author or contributors be liable for any claim, damages, or other liability, whether in an action of contract, tort, or otherwise, arising from, out of, or in connection with the code or package or the use or other dealings in the code or package.
 
 Please use this code and package at your own risk. The author and contributors disclaim all liability and responsibility for any errors or issues that may arise from its use. It is your responsibility to test and validate the code and package for your particular use case.
