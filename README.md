@@ -2,7 +2,7 @@
 
 This Package provides real-time trade notifications using brokerage APIs (currently supporting etrade). It instantly alerts you when a stock or option buy or sell order is executed, ensuring efficient trade alerting. You can either copy the text alert or send it if you have a webhook (soon send it as a discord user). Don't waste time typing trade alerts manually - start using TradeAlerter to effortlessly share your alerts on Discord without typos and delays!
 
-If you like this package, give it a star
+If you like this package, give it a star!
 
 ### Key Features:
 **Instant Trade Notifications**: Send real-time (for real) alerts for filled orders without delay.
