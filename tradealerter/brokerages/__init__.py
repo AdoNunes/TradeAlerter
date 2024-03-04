@@ -47,6 +47,7 @@ def get_brokerage(name=cfg['alert_configs']['BROKERAGE']):
         ts.get_session()
         return ts
     elif name.lower() == "webull":
+        print("Can you read that?")
         from .weBull_api import weBull
         wb = weBull()
         success = wb.get_session()
