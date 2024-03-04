@@ -234,6 +234,9 @@ class weBull:
 
     def get_orders(self, status:str='ALL'):
         orders = self.session.get_history_orders()
+        if isinstance(orders, dict) and orders.get('success') is False:
+            raise ValueError("Order entpoint obsolete, go to webull/endpoints.py (actual webull package) line 144 and remove '&startTime=1970-0-1'")
+        
         orders_all  = []
         for order in orders:
             if status != "ALL" and order['status'].upper() != status:
