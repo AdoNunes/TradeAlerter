@@ -65,3 +65,5 @@ def get_brokerage(name=cfg['alert_configs']['BROKERAGE']):
             print("Got error: \n", e, "\n Trying again...if it fails again, rerun the application.")
             et.get_session()
         return et
+    else:
+        raise Exception(f"Brokerage {name} not supported")
