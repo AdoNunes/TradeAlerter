@@ -50,10 +50,15 @@ class orders_check():
                      alert_sufix=cfg['alert_configs']['string_add_to_alert'],
                      alert=True):
         "Pool filled orders, generate alert and push it with date and inx to queue"
+        n_errors = 0
         if dev:
             self.orders = []
         while True:
-            self._read_orders(dev,alert_sufix, alert)
+            try:
+                self._read_orders(dev,alert_sufix, alert)
+            except Exception as e:
+                n_errors += 1
+                print(f"Cauguth error num {n_errors}:", e)
             time.sleep(refresh_rate)
     
     def _read_orders(self, dev, alert_sufix, alert):
