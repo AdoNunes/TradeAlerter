@@ -1,11 +1,14 @@
 import os.path as op
+import sys
 import time
 import json
 import pandas as pd
+from datetime import datetime
 import re
 import queue
 from tradealerter.configurator import cfg
 from tradealerter.brokerages import get_brokerage
+
 
 class orders_check():
     def __init__(self, 
@@ -38,36 +41,43 @@ class orders_check():
             self.bksession =  get_brokerage()
         else:
             self.bksession = bksession()
-        self.bksession.get_session()
         self.queue = queue
         
         # load previous orders, dont send them
         if not cfg['alert_configs'].getboolean('DEV'):
-            self._read_orders(False, "", False)
+            self._read_orders(False, False)
 
     def check_orders(self, refresh_rate=1,
-                     dev=False,
-                     alert_sufix=cfg['alert_configs']['string_add_to_alert'],
+                     dev=False,                     
                      alert=True):
         "Pool filled orders, generate alert and push it with date and inx to queue"
         n_errors = 0
         if dev:
             self.orders = []
-        while True:
-            try:
-                self._read_orders(dev,alert_sufix, alert)
-            except Exception as e:
-                n_errors += 1
-                print(f"Cauguth error num {n_errors}:", e)
-            time.sleep(refresh_rate)
+        with open(op.join(cfg['paths']['data'],'webull_getorders_ts.txt'), 'a') as file:
+            while True:
+                try:
+                    t0 = datetime.now().strftime("%m/%d %H:%M:%S")
+                    self._read_orders(dev, alert)
+                    t1 = datetime.now().strftime("%m/%d %H:%M:%S")
+                    iout = f'{t0},{t1}\n'                    
+                except Exception as e:
+                    n_errors += 1
+                    print(f"Cauguth error num {n_errors}:", e)
+                    t1 = datetime.now().strftime("%m/%d %H:%M:%S")
+                    iout = f',{t1},error{n_errors}\n'
+                time.sleep(refresh_rate)
+                file.write(iout)
+                file.flush()
+
     
-    def _read_orders(self, dev, alert_sufix, alert):
+    def _read_orders(self, dev, alert):
         et_orders = self.bksession.get_orders('FILLED')
         for eto in et_orders[-1::-1]:                
             if not len(self.orders) or eto['order_id'] not in [o['order_id'] for o in self.orders]:
                 _, trade_ix = self.track_portfolio(eto)                
                 if alert:
-                    alert = f"{self.make_alert(eto)} {alert_sufix}"
+                    alert = f"{self.make_alert(eto)}"
                     self.queue.put([alert, eto['closeTime'], trade_ix])
                 self.orders.append(eto)
                 if dev:

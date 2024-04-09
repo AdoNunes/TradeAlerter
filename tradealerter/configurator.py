@@ -1,8 +1,10 @@
 import configparser
 import os
+import sys
 import os.path as op
 
 package_dir = os.path.abspath(os.path.dirname(__file__))
+# package_dir = op.abspath(op.dirname(sys.executable))
 
 config_path = package_dir + '/config.ini'
 if not os.path.exists(config_path):
