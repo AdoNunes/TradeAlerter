@@ -84,12 +84,12 @@ def gui():
 
         try:
             new_order, date, port_ix = orders_queue.get(False)
-            if port_ix is None:
+            if port_ix is None and not cfg['alert_configs'].getboolean('send_all_BTOs'):
                 print("skipping as not in port", new_order)
                 continue
             trade = ord_checker.port.loc[port_ix]
             if new_order.startswith("BTO"):
-                if cfg['alert_configs']['send_all_BTOs']:
+                if cfg['alert_configs'].getboolean('send_all_BTOs'):
                     status = "do_send"
                 elif (pd.Series(trade['BTOs-sent']) - trade['BTO-n']).lt(0).all():
                     status = "Send"
@@ -97,7 +97,7 @@ def gui():
                     status = "Sent"
             elif new_order.startswith("STC"):
                 # send all STC
-                if cfg['alert_configs']['send_all_BTOs']:
+                if cfg['alert_configs'].getboolean('send_all_BTOs'):
                     status = "do_send"
                 # if not sent but BTO not sent           
                 elif pd.isna(trade['BTOs-sent']):
