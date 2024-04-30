@@ -108,7 +108,7 @@ class weBull:
             yer, mnt, day = order['orders'][0]['optionExpireDate'].split("-")
             otype = order['orders'][0]['optionType'][0].upper()
             symbol = f"{order['orders'][0]['symbol']}_{mnt}{day}{yer[2:]}{otype}{order['orders'][0]['optionExercisePrice']}".replace(".00","")
-            symbol = self.fix_symbol(symbol, "out")
+            symbol = self.fix_symbol(symbol, "in")
             orderStrategyType = order['optionStrategy'].upper()
         else:
             symbol = order['orders'][0]['symbol']
