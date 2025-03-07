@@ -91,6 +91,8 @@ class orders_check():
         """ From order makes alert with format BTO|STC Qty Symbol [Strike] [Date] @ Price"""
         qty = order['quantity']
         price = order['price']
+        timestamp = int(order['orders'][0]['updateTime0'])/1000
+        closeTime = datetime.fromtimestamp(timestamp).strftime("%m/%d %H:%M:%S")
         if "_" in order['symbol']:
             # option
             act = order['action'].replace('BUY_OPEN', 'BTO').replace('SELL_CLOSE', 'STC').replace('BUY', 'BTO').replace('SELL', 'STC')
@@ -98,10 +100,10 @@ class orders_check():
             match = re.search(exp, order['symbol'], re.IGNORECASE)
             if match:
                 symbol, date, type, strike = match.groups()
-                symb_str = f"{act} {qty} {symbol} {strike}{type} {date[:2]}/{date[2:4]} @{round(price,2)}"
+                symb_str = f"{act} {qty} {symbol} {strike}{type} {date[:2]}/{date[2:4]} @{round(price,2)} - filled at {closeTime}"
         else:
             act = order['action'].replace('BUY', 'BTO').replace('SELL', 'STC')
-            symb_str= f"{act} {qty} {order['symbol']} @{price}"
+            symb_str= f"{act} {qty} {order['symbol']} @{price} - filled at {closeTime}"
         return symb_str
 
     def extra_info_from_port():
