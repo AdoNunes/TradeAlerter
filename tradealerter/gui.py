@@ -46,10 +46,22 @@ def layout():
 def send_order(order, port):  
     sent = False
     if len(cfg['discord']['webhook']):
+        webhook_urls = eval(cfg['discord']['webhook'])
+        webhook_names = eval(cfg['discord']['webhook_name'])
+        alert_parts = order['alert'].split()
+        if len(alert_parts) >= 3 and alert_parts[2] == 'QQQ' and len(webhook_urls) >= 2:
+            webhook_url = webhook_urls[1]
+            webhook_name = webhook_names[1]
+            order['alert'] = order['alert'].replace("<@role>", "<@&1235364259823751278>")
+        else:
+            webhook_url = webhook_urls[0]
+            webhook_name = webhook_names[0]
+            order['alert'] = order['alert'].replace("<@role>", "<@&1235364618755637430>")
+        
         print("webhook alert sending at", datetime.now().strftime("%m/%d %H:%M:%S"))
         webhook = DiscordWebhook(
-            url=cfg['discord']['webhook'], 
-            username=cfg['discord']['webhook_name'], 
+            url=webhook_url, 
+            username=webhook_name, 
             content= order['alert'], 
             rate_limit_retry=True)
         response = webhook.execute()
